@@ -1,0 +1,4 @@
+# pip install -r requirements.txt
+networkx>=3.0   # make_routes.py: 그래프와 다익스트라 최단 경로
+pandas>=2.0     # analyze.py: 집계표와 기술통계
+segno>=1.6      # make_qr.py: QR 코드

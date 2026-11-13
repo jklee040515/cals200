@@ -1,0 +1,1096 @@
+/* =====================================================================
+   [5 화면] style.css — 200동 길찾기 화면 디자인
+   순서: 기본 초기화 → 색·글꼴 변수(밝은/어두운) → 공통 → 지도 영역 → 카드 시트
+         → 홈 → 경로 요약 → 단계 안내 → 도착 → 넓은 화면 → 추천 경로 한 줄
+   색은 모두 :root 의 변수(--blue 등)로 정하고, 캔버스 그림(map3d.js·plan.js)도
+   이 변수를 읽어 씀 → 색을 바꾸려면 변수만 고치면 됨
+   ===================================================================== */
+
+/* 기본 초기화 */
+:root {
+  color-scheme: light;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+body {
+  margin: 0;
+}
+img {
+  max-width: 100%;
+}
+[hidden] {
+  display: none !important;
+}
+
+/* 레이아웃: 지도 우선 앱. 위쪽 3D 지도(정류장·도로·건물·경로) + 아래 카드 시트. 넓은 화면은 지도 왼쪽, 시트 오른쪽.
+   색 역할: 바탕 회백 · 카드 흰색 · 글자 남색 · 길 파랑(실내 경로) · 산호(출입구·도착) · 버스 초록(지선버스) · 구역 3색(상록관 청록, 중앙관 회청, 생명관 귤색).
+   글꼴: 본문·제목 Noto Sans KR, 숫자 Outfit. */
+:root {
+  --bg: #f2f4f6;
+  --card: #ffffff;
+  --card-2: #f7f8fa;
+  --ink: #191f28;
+  --ink-2: #4e5968;
+  --ink-3: #8b95a1;
+  --line: #e5e8eb;
+  --blue: #2f6feb;
+  --blue-ink: #ffffff;
+  --blue-soft: #ebf2fe;
+  --coral: #f04452;
+  --coral-soft: #feecee;
+  --bus: #3daa48;
+  --ok: #12b886;
+  --green: #1fa68c;
+  --main: #8c9aa8;
+  --bio: #f2994a;
+  --ground: #e9eef2;
+  --road: #ffffff;
+  --road-edge: #d8e0e6;
+  --ground-line: #dde5ea;
+  --plan-bg: #f7f9fa;
+  --plan-hall: #edf1f4;
+  --plan-room: #f1ecdf;
+  --plan-room-ink: #4a4330;
+  --plan-stairs: #5a84d6;
+  --plan-lift: #8466d2;
+  --plan-other: #b3bcc4;
+  --shadow-card: 0 1px 2px rgba(25, 31, 40, 0.04), 0 4px 16px rgba(25, 31, 40, 0.06);
+  --shadow-float: 0 4px 14px rgba(25, 31, 40, 0.14);
+  --font: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --num: "Outfit", "Noto Sans KR", system-ui, sans-serif;
+}
+/* 어두운 화면: 기기 설정이 다크 모드면 같은 변수 이름에 어두운 색을 넣음 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101418;
+    --card: #191f25;
+    --card-2: #20272e;
+    --ink: #eceff2;
+    --ink-2: #aeb8c2;
+    --ink-3: #7d8893;
+    --line: #2a323a;
+    --blue: #5b93f5;
+    --blue-ink: #071224;
+    --blue-soft: #172539;
+    --coral: #ff6b76;
+    --coral-soft: #3a1d21;
+    --bus: #4cc25a;
+    --ok: #38d9a9;
+    --green: #3cc2a6;
+    --main: #9da9b6;
+    --bio: #f5a764;
+    --ground: #121a20;
+    --road: #1e272e;
+    --road-edge: #2a353e;
+    --ground-line: #19232a;
+    --plan-bg: #131a1f;
+    --plan-hall: #1b242b;
+    --plan-room: #2e2a21;
+    --plan-room-ink: #e7dfc7;
+    --plan-stairs: #729be4;
+    --plan-lift: #a08be3;
+    --plan-other: #56626c;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 18px rgba(0, 0, 0, 0.35);
+    --shadow-float: 0 4px 14px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+/* 공통: 바탕·글꼴·버튼·초점 표시 */
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+body {
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+/* 아이폰 노치(위쪽 안전 영역)에 지도 색을 깔아 둠 */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  z-index: 20;
+  background: var(--ground);
+}
+* {
+  box-sizing: border-box;
+}
+button,
+input,
+a {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+button {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+/* 키보드로 이동할 때 보이는 초점 테두리 (접근성) */
+:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+/* 화면 읽기 프로그램에만 들리는 글자 */
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+svg {
+  flex-shrink: 0;
+}
+/* 숫자: Outfit 글꼴, 자릿수 폭을 같게 */
+.num {
+  font-family: var(--num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+/* ---- 앱 틀: 위쪽 지도 + 아래쪽 카드 시트 (휴대전화 폭 기준, 최대 520px) ---- */
+.app {
+  max-width: 520px;
+  margin: 0 auto;
+  min-height: 100%;
+}
+.map {
+  position: relative;
+  height: var(--maph, 48vh);
+  min-height: 300px;
+  max-height: 560px;
+  background: var(--ground);
+  overflow: hidden;
+}
+#c3d {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+#c3d:active {
+  cursor: grabbing;
+}
+/* 층 평면도 상자 (세로로 스크롤) */
+.planwrap {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  background: var(--plan-bg);
+  padding: 72px 14px 48px;
+  overscroll-behavior: contain;
+}
+.planwrap canvas {
+  display: block;
+  width: 100%;
+}
+.plancap {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-3);
+  margin: 0 2px 6px;
+  letter-spacing: 0.04em;
+}
+/* 지도 위 버튼 줄: 뒤로 · 앱 이름 · 나침반 */
+.mapbar {
+  position: absolute;
+  inset: 0 0 auto 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 14px;
+  padding-left: max(14px, env(safe-area-inset-left, 0px));
+  padding-right: max(14px, env(safe-area-inset-right, 0px));
+  pointer-events: none;
+  z-index: 3;
+}
+.mapbar > * {
+  pointer-events: auto;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border-radius: 999px;
+  padding: 6px 16px 6px 6px;
+  box-shadow: var(--shadow-float);
+}
+.brand .mk {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--blue-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.brand b {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.brand small {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-3);
+  line-height: 1.2;
+}
+/* 지도 위 둥근 버튼 */
+.fab {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--card);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-float);
+}
+.spacer {
+  flex: 1;
+}
+/* 나침반: 바늘(i)을 map3d.js 가 돌림 */
+.compass {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--card);
+  box-shadow: var(--shadow-float);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.compass i {
+  position: absolute;
+  inset: 6px;
+  display: block;
+  transform-origin: 50% 50%;
+}
+.compass i::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-bottom: 13px solid var(--coral);
+  border-top: 0;
+}
+.compass i::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top: 13px solid var(--ink-3);
+  border-bottom: 0;
+}
+.compass b {
+  position: relative;
+  font-size: 10px;
+  font-weight: 800;
+  background: var(--card);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+}
+/* 3D 회전 버튼, 3D/평면 바꾸기, 지금 층 표시 */
+.mapctl {
+  position: absolute;
+  right: max(14px, env(safe-area-inset-right, 0px));
+  bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 3;
+}
+.viewseg {
+  position: absolute;
+  left: max(14px, env(safe-area-inset-left, 0px));
+  bottom: 40px;
+  display: flex;
+  background: var(--card);
+  border-radius: 999px;
+  padding: 4px;
+  box-shadow: var(--shadow-float);
+  z-index: 3;
+}
+.viewseg button {
+  min-width: 58px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink-3);
+}
+.viewseg button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--card);
+}
+.floorchip {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 16px;
+  background: var(--ink);
+  color: var(--card);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  z-index: 3;
+  white-space: nowrap;
+  box-shadow: var(--shadow-float);
+}
+
+/* ---- 아래쪽 카드 시트 ---- */
+.sheet {
+  position: relative;
+  margin-top: -24px;
+  background: var(--bg);
+  border-radius: 24px 24px 0 0;
+  min-height: calc(100vh - var(--maph, 48vh) + 24px);
+  padding-top: 10px;
+  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  z-index: 4;
+}
+.grab {
+  width: 36px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--ink-3);
+  opacity: 0.35;
+  margin: 0 auto 14px;
+}
+section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* 카드와 제목·설명·작은 제목 글자 */
+.card {
+  background: var(--card);
+  border-radius: 22px;
+  padding: 20px;
+  box-shadow: var(--shadow-card);
+}
+.card.tight {
+  padding: 16px;
+}
+.title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.sub {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.label {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-3);
+}
+
+/* ---- 홈 ---- */
+/* 출발점(농생대 정류장) 줄 */
+.origin {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.busic {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--bus);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.origin b {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+}
+.origin small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.bn {
+  font-family: var(--num);
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--bus);
+  border-radius: 5px;
+  padding: 1px 6px;
+}
+
+/* 검색창 */
+.search {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card-2);
+  border: 2px solid transparent;
+  border-radius: 16px;
+  padding: 0 6px 0 14px;
+  min-height: 56px;
+}
+.search:focus-within {
+  border-color: var(--blue);
+  background: var(--card);
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font-size: 17px;
+  padding: 14px 0;
+  outline: none;
+}
+.search input::placeholder {
+  color: var(--ink-3);
+}
+.search input::-webkit-search-cancel-button {
+  display: none;
+}
+.iconbtn {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-3);
+}
+/* 목록 한 줄 (검색 결과·최근 찾은 곳·층별 방 목록 공통) */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.list li + li {
+  border-top: 1px solid var(--line);
+}
+.list button {
+  width: 100%;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 8px 0;
+}
+.list .sw {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--num);
+  font-weight: 700;
+  font-size: 13px;
+  color: #fff;
+  flex-shrink: 0;
+}
+.list .nm {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+.list .nm small {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.list .chev {
+  color: var(--ink-3);
+}
+.empty {
+  padding: 12px 0;
+  color: var(--ink-3);
+  font-size: 14px;
+}
+/* 층별로 찾기: 구역 버튼(.seg) · 층 버튼(.floors) */
+.seg {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  background: var(--card-2);
+  padding: 4px;
+  border-radius: 14px;
+}
+.seg button {
+  min-height: 52px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  gap: 3px;
+  color: var(--ink-2);
+}
+.seg button small {
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.seg button[aria-pressed="true"] {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 4px rgba(25, 31, 40, 0.12);
+}
+.seg .bar {
+  width: 20px;
+  height: 4px;
+  border-radius: 2px;
+}
+.floors {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin: 12px -4px 4px;
+  padding: 2px 4px 4px;
+  scrollbar-width: none;
+}
+.floors::-webkit-scrollbar {
+  display: none;
+}
+.floors button {
+  flex-shrink: 0;
+  min-width: 48px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--card-2);
+  font-family: var(--num);
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.floors button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--card);
+}
+/* 추천 기준과 자료 (눌러서 펼침) */
+details.about {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+details.about summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+}
+details.about ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  line-height: 1.55;
+}
+
+/* ---- 경로 요약 ---- */
+/* 목적지 이름과 구역·층 표시 */
+.dest {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tag {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--card-2);
+  color: var(--ink-2);
+}
+.tag i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+/* 큰 버튼 (primary = 파란색 주 버튼, kakao = 카카오맵) */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 56px;
+  border-radius: 16px;
+  border: 0;
+  background: var(--card-2);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 16px;
+  text-decoration: none;
+  padding: 0 18px;
+  text-align: center;
+}
+.btn.primary {
+  background: var(--blue);
+  color: var(--blue-ink);
+}
+.btn.kakao {
+  background: #fee500;
+  color: #191600;
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+/* 추천 기준 한 줄 설명 */
+.rule {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.5;
+  margin: 0 0 14px;
+}
+.rule svg {
+  color: var(--blue);
+  margin-top: 2px;
+}
+.rule b {
+  color: var(--ink);
+}
+/* 출입구 비교 카드 (누르면 그 출입구 경로로 바뀜) */
+.ents {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ent {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 14px;
+  border: 2px solid var(--line);
+  border-radius: 18px;
+  background: var(--card);
+  text-align: left;
+}
+.ent[aria-pressed="true"] {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+}
+.ent .fl {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--coral);
+  color: #fff;
+  font-family: var(--num);
+  font-weight: 700;
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ent .t {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ent .t b {
+  font-size: 15px;
+  font-weight: 700;
+}
+.ent .best {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--blue-ink);
+  background: var(--blue);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.ent .d {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.ent .parts {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+/* 엘리베이터만 켬/끔 스위치 (input 을 숨기고 span 으로 그림) */
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.switch {
+  position: relative;
+  width: 50px;
+  height: 30px;
+  flex-shrink: 0;
+}
+.switch input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.switch span {
+  position: absolute;
+  inset: 0;
+  border-radius: 15px;
+  background: var(--line);
+  transition: background 0.2s;
+}
+.switch span::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s;
+}
+.switch input:checked + span {
+  background: var(--blue);
+}
+.switch input:checked + span::after {
+  transform: translateX(20px);
+}
+.switch input:focus-visible + span {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+/* 경고 상자: 경로를 찾지 못했을 때 */
+.warn {
+  display: flex;
+  gap: 10px;
+  background: var(--coral-soft);
+  border-radius: 16px;
+  padding: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.warn svg {
+  color: var(--coral);
+  margin-top: 1px;
+}
+/* 전체 단계 타임라인 (세로 점선으로 이어진 단계 목록) */
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.timeline li {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  padding-bottom: 18px;
+  position: relative;
+}
+.timeline li::before {
+  content: "";
+  position: absolute;
+  left: 19px;
+  top: 42px;
+  bottom: 2px;
+  width: 2px;
+  background: var(--line);
+  border-radius: 1px;
+}
+.timeline li:last-child {
+  padding-bottom: 0;
+}
+.timeline li:last-child::before {
+  display: none;
+}
+.timeline .dot {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+.timeline .dot.out {
+  background: var(--bus);
+  color: #fff;
+}
+.timeline .dot.end {
+  background: var(--coral);
+  color: #fff;
+}
+.timeline .t {
+  padding-top: 2px;
+  overflow-wrap: anywhere;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.timeline small {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* ---- 단계 안내 ---- */
+/* 진행 막대 · 단계 머리글 · 단계 카드 */
+.prog {
+  display: flex;
+  gap: 4px;
+}
+.prog i {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.prog i.on {
+  background: var(--blue);
+}
+.stephead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.stephead .k {
+  font-family: var(--num);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.stepcard {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.stepcard .ic {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stepcard .ic.out {
+  background: var(--bus);
+  color: #fff;
+}
+.stepcard .ic.end {
+  background: var(--coral);
+  color: #fff;
+}
+.stepcard h2 {
+  margin: 6px 0 6px;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+/* 화면 아래에 붙는 이전/다음 버튼 줄 */
+.dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  background: var(--card);
+  box-shadow: 0 -1px 0 var(--line);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.dock .in {
+  max-width: 520px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 10px;
+  padding-block: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+/* ---- 도착 ---- */
+.arrive {
+  align-items: center;
+  text-align: center;
+}
+.okc {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--ok);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 8px auto 4px;
+}
+
+/* ---- 넓은 화면(960px 이상): 지도 왼쪽, 카드 시트 오른쪽 ---- */
+@media (min-width: 960px) {
+  .app {
+    max-width: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 480px;
+    min-height: 100vh;
+  }
+  .map {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    max-height: none;
+  }
+  .sheet {
+    margin-top: 0;
+    border-radius: 0;
+    min-height: 100vh;
+    padding-top: 28px;
+  }
+  .grab {
+    display: none;
+  }
+  .dock {
+    left: auto;
+    width: 480px;
+  }
+  .dock .in {
+    max-width: none;
+  }
+}
+/* 움직임 줄이기 설정을 켠 사용자: 스위치 애니메이션 끔 */
+@media (prefers-reduced-motion: reduce) {
+  .switch span,
+  .switch span::after {
+    transition: none;
+  }
+}
+
+/* ---- 추천 경로 한 줄 (정류장 › 출입구 › 엘리베이터 › 목적지) ----
+   app.js 의 renderChain() 이 .rchip 칩과 .rarr 화살표를 만듦. 칩 종류(bus·door·flag)마다 아이콘 색이 다름 */
+.rchain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.rchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px 7px 9px;
+  border-radius: 12px;
+  background: var(--card-2);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.rchip svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--blue);
+}
+.rchip.bus svg {
+  color: var(--bus);
+}
+.rchip.door svg {
+  color: var(--coral);
+}
+.rchip.flag {
+  background: var(--blue-soft);
+}
+.rarr {
+  color: var(--ink-3);
+  font-size: 18px;
+  font-weight: 700;
+}
+.rnote {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.ent .parts {
+  font-size: 12px;
+  color: var(--ink-2);
+}
